@@ -1,71 +1,89 @@
-let docentes = [];
-let editIndex = -1;
-
 const form = document.getElementById("formDocente");
 const tabla = document.getElementById("tablaDocentes");
+
+let editando = false;
+let idEditar = null;
+
 
 form.addEventListener("submit", function(e) {
     e.preventDefault();
 
-    const docente = {
-        tipoDocumento: document.getElementById("tipoDocumento").value,
-        nombre: document.getElementById("nombre").value,
-        apellido: document.getElementById("apellido").value,
-        fechaNacimiento: document.getElementById("fechaNacimiento").value,
-        nivel: document.getElementById("nivel").value,
-        area: document.getElementById("area").value,
-        grado: document.getElementById("grado").value,
-        eps: document.getElementById("eps").value,
-        salario: document.getElementById("salario").value
-    };
+    const datos = new FormData(form);
 
-    if (editIndex === -1) {
-        docentes.push(docente);
-    } else {
-        docentes[editIndex] = docente;
-        editIndex = -1;
+    let url = editando ? "editar.php" : "guardar.php";
+
+    if (editando) {
+        datos.append("id", idEditar);
     }
 
-    form.reset();
-    mostrarDocentes();
+    fetch(url, {
+        method: "POST",
+        body: datos
+    })
+    .then(res => res.text())
+    .then(res => {
+        if (res === "ok") {
+            alert(editando ? "Actualizado" : "Guardado");
+            form.reset();
+            editando = false;
+            cargarDocentes();
+        }
+    });
 });
 
-function mostrarDocentes() {
-    tabla.innerHTML = "";
 
-    docentes.forEach((docente, index) => {
-        tabla.innerHTML += `
-            <tr>
-                <td>${docente.nombre}</td>
-                <td>${docente.apellido}</td>
-                <td>${docente.area}</td>
-                <td>${docente.salario}</td>
-                <td>
-                    <button onclick="editarDocente(${index})">Editar</button>
-                    <button onclick="eliminarDocente(${index})">Eliminar</button>
-                </td>
-            </tr>
-        `;
+function cargarDocentes() {
+    fetch("listar.php")
+    .then(res => res.json())
+    .then(data => {
+        tabla.innerHTML = "";
+
+        data.forEach(docente => {
+            tabla.innerHTML += `
+                <tr>
+                    <td>${docente.id}</td>
+                    <td>${docente.nombre}</td>
+                    <td>${docente.apellido}</td>
+                    <td>${docente.area}</td>
+                    <td>${docente.salario}</td>
+                    <td>
+                        <button onclick="editarDocente(${docente.id}, '${docente.nombre}', '${docente.apellido}', '${docente.area}', '${docente.salario}')">Editar</button>
+                        <button onclick="eliminarDocente(${docente.id})">Eliminar</button>
+                    </td>
+                </tr>
+            `;
+        });
     });
 }
 
-function eliminarDocente(index) {
-    docentes.splice(index, 1);
-    mostrarDocentes();
+
+function eliminarDocente(id) {
+    if (confirm("¿Eliminar docente?")) {
+        const datos = new FormData();
+        datos.append("id", id);
+
+        fetch("eliminar.php", {
+            method: "POST",
+            body: datos
+        })
+        .then(res => res.text())
+        .then(res => {
+            if (res === "ok") {
+                cargarDocentes();
+            }
+        });
+    }
 }
 
-function editarDocente(index) {
-    const docente = docentes[index];
 
-    document.getElementById("tipoDocumento").value = docente.tipoDocumento;
-    document.getElementById("nombre").value = docente.nombre;
-    document.getElementById("apellido").value = docente.apellido;
-    document.getElementById("fechaNacimiento").value = docente.fechaNacimiento;
-    document.getElementById("nivel").value = docente.nivel;
-    document.getElementById("area").value = docente.area;
-    document.getElementById("grado").value = docente.grado;
-    document.getElementById("eps").value = docente.eps;
-    document.getElementById("salario").value = docente.salario;
+function editarDocente(id, nombre, apellido, area, salario) {
+    document.getElementById("nombre").value = nombre;
+    document.getElementById("apellido").value = apellido;
+    document.getElementById("area").value = area;
+    document.getElementById("salario").value = salario;
 
-    editIndex = index;
+    editando = true;
+    idEditar = id;
 }
+
+cargarDocentes();
